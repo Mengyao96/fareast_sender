@@ -1,4 +1,4 @@
-// 发送端 (Sender) - 遥控器最终版
+// 发送端 (Sender) - 遥控器最终版 (增加后退功能)
 
 let lift_on = 0
 radio.setGroup(228)
@@ -9,7 +9,6 @@ input.onLogoEvent(TouchButtonEvent.Pressed, function () {
     if (lift_on == 0) {
         lift_on = 1
         radio.sendValue("lift", 1) // 发送"开启"命令
-        // 【已修正】使用 showArrow 来显示北向箭头
         basic.showArrow(ArrowNames.North)
     } else {
         lift_on = 0
@@ -39,20 +38,24 @@ input.onGesture(Gesture.Shake, function () {
     basic.showIcon(IconNames.Skull)
 })
 
-// 永久循环：检测倾斜来控制推进速度
+// 永久循环：检测倾斜来控制前进和后退
 basic.forever(function () {
+    // 读取前后倾斜值 (Y轴)
     let pitch = input.acceleration(Dimension.Y)
-    if (pitch < -150) {
-        let thrust_speed = pins.map(
-            pitch,
-            -200,
-            -1023,
-            200,
-            1023
-        )
-        radio.sendValue("thrust", thrust_speed)
+
+    // 【新功能】向前倾斜超过阈值
+    if (pitch < -200) {
+        let forward_speed = pins.map(pitch, -200, -1023, 200, 1023)
+        // 发送一个名叫 "drive" 的命令，值为正数代表前进
+        radio.sendValue("drive", forward_speed)
+        // 【新功能】向后倾斜超过阈值
+    } else if (pitch > 200) {
+        let backward_speed = pins.map(pitch, 200, 1023, 200, 1023)
+        // 发送一个名叫 "drive" 的命令，值为负数代表后退
+        radio.sendValue("drive", -1 * backward_speed)
     } else {
-        radio.sendValue("thrust", 0)
+        // 放平则停止
+        radio.sendValue("drive", 0)
     }
     basic.pause(50)
 })
